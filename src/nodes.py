@@ -307,6 +307,7 @@ def assembler_node(state: AgentState) -> dict:
     # Write metadata.json
     metadata = {
         "task_name": task_name,
+        "prompt_file": state.get("prompt_file", "unknown"),
         "project_name": project_name,
         "active_skills": active_skills,
         "output_type": output_type,

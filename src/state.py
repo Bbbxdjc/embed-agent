@@ -11,6 +11,7 @@ class AgentState(TypedDict, total=False):
 
     # Run configuration
     task_name: str
+    prompt_file: str  # Name of the prompt file used (e.g., "prompt_v2.txt")
     run_dir: str  # Path to current run directory (e.g., tasks/dht11/runs/2026-02-12_14-30-25)
 
     # Project metadata (set by manager)
