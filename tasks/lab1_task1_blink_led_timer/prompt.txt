@@ -1,0 +1,6 @@
+Can you help me using esp-idf to implements the following requirements using the esp32s3.
+
+Build the circuit and write a program to simultaneously blink (toggle) two LEDs using two separate timers: the first LED blinks at every 500 msec and another LED at every 1 sec. The expectation is that the toggling rate is adjusted via the timer configuration and no explicit timing-related functions, such as delay(), are used.
+
+
+The first LED is connected to the GPIO 13. The second LED is connected to GPIO 21.

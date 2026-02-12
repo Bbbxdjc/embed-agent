@@ -1,0 +1,11 @@
+{
+  "task_name": "lab1_task1_blink_led_timer",
+  "project_name": "esp32s3_dual_timer_led_blink",
+  "active_skills": [
+    "esp32-s3",
+    "esp-idf"
+  ],
+  "output_type": "esp-idf",
+  "timestamp": "2026-02-12T18:31:54.515900",
+  "requirements": "Can you help me using esp-idf to implements the following requirements using the esp32s3.\n\nBuild the circuit and write a program to simultaneously blink (toggle) two LEDs using two separate timers: the first LED blinks at every 500 msec and another LED at every 1 sec. The expectation is that the toggling rate is adjusted via the timer configuration and no explicit timing-related functions, such as delay(), are used.\n\n\nThe first LED is connected to the GPIO 13. The second LED is connected to GPIO 21."
+}
