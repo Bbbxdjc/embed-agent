@@ -1,0 +1,5 @@
+Can you help me using esp-idf to implements the following requirements using the esp32s3.
+
+run a demo that toggles an LED at a frequency of 1 Hz.
+
+The LED is connected to the GPIO 13.

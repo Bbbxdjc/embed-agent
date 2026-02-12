@@ -1,0 +1,11 @@
+{
+  "task_name": "lab0_task1_1hz",
+  "project_name": "esp32s3_led_toggle_1hz",
+  "active_skills": [
+    "esp32-s3",
+    "esp-idf"
+  ],
+  "output_type": "esp-idf",
+  "timestamp": "2026-02-12T17:26:10.901671",
+  "requirements": "Can you help me using esp-idf to implements the following requirements using the esp32s3.\n\nrun a demo that toggles an LED at a frequency of 1 Hz.\n\nThe LED is connected to the GPIO 13."
+}
