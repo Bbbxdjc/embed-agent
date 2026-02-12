@@ -1,0 +1,1 @@
+"""Embedded code generation agent package."""
