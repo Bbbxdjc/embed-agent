@@ -2,12 +2,12 @@
 Entry point for the embedded code generation agent.
 
 Usage:
-    python main.py <task_directory> [prompt_file]
+    python main.py [task_directory] [prompt_file]
 
 Examples:
-    python main.py tasks/dht11_sensor                  # Lists available prompts to choose
-    python main.py tasks/dht11_sensor prompt.txt       # Uses specific prompt file
-    python main.py tasks/dht11_sensor 2                # Uses prompt by number
+    python main.py                                     # Fully driven by config.yaml
+    python main.py tasks/dht11_sensor                  # Override task_dir from CLI
+    python main.py tasks/dht11_sensor prompt.txt       # Override prompt file from CLI
 
 Task directory structure:
     tasks/dht11_sensor/
@@ -29,7 +29,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from src.config import load_config
 from src.graph import build_graph
+from src.nodes import configure_model
 
 
 def list_prompt_files(task_dir: Path) -> list[Path]:
@@ -112,27 +114,28 @@ def select_prompt_file(task_dir: Path, prompt_arg: str = None) -> Path:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <task_directory> [prompt_file]")
-        print("Examples:")
-        print("  python main.py tasks/dht11_sensor")
-        print("  python main.py tasks/dht11_sensor prompt_v2.txt")
-        print("  python main.py tasks/dht11_sensor 2")
+    config = load_config("config.yaml")
+    cli_task_dir = sys.argv[1] if len(sys.argv) > 1 else None
+    cli_prompt_arg = sys.argv[2] if len(sys.argv) > 2 else None
+
+    task_dir_str = cli_task_dir or config.input.task_dir
+    if not task_dir_str:
+        print("Error: task directory is required.")
+        print("Provide it via CLI arg or config.yaml -> input.task_dir")
         sys.exit(1)
 
-    task_dir = Path(sys.argv[1])
-    prompt_arg = sys.argv[2] if len(sys.argv) > 2 else None
+    task_dir = Path(task_dir_str)
+    prompt_arg = cli_prompt_arg or config.input.prompt_file
 
     # Validate task directory
     if not task_dir.exists():
         print(f"Error: Task directory not found: {task_dir}")
         sys.exit(1)
 
-    # Select prompt file
     prompt_file = select_prompt_file(task_dir, prompt_arg)
-
-    # Load requirements
     requirements = prompt_file.read_text().strip()
+    prompt_file_name = prompt_file.name
+
     task_name = task_dir.name
 
     # Create timestamped run directory
@@ -140,18 +143,29 @@ def main():
     run_dir = task_dir / "runs" / timestamp
     run_dir.mkdir(parents=True, exist_ok=True)
 
+    configure_model(
+        model_name=config.model.name,
+        temperature=config.model.temperature,
+        api_base=config.model.api_base,
+        api_key_env=config.model.api_key_env,
+    )
+
     print(f"Task: {task_name}")
-    print(f"Prompt: {prompt_file.name}")
+    print(f"Prompt: {prompt_file_name}")
+    print(f"Model: {config.model.name} (temperature={config.model.temperature})")
+    print(f"Model.api_base: {config.model.api_base}")
+    print(f"Model.api_key_env: {config.model.api_key_env}")
+    print(f"Graph.enable_diagram: {config.graph.enable_diagram}")
     print(f"Run directory: {run_dir}")
     print(f"Requirements:\n{requirements}\n")
     print("Starting embedded code generation...\n")
 
-    app = build_graph()
+    app = build_graph(enable_diagram=config.graph.enable_diagram)
 
     inputs = {
         "requirements": requirements,
         "task_name": task_name,
-        "prompt_file": prompt_file.name,
+        "prompt_file": prompt_file_name,
         "run_dir": str(run_dir),
         "messages": [],
         "debug_logs": [],

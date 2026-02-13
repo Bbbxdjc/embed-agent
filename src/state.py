@@ -19,6 +19,8 @@ class AgentState(TypedDict, total=False):
     active_platform: Optional[str]
     active_skills: List[str]
     active_skill_content: Optional[str]
+    prepared_output_dir: Optional[str]
+    prepared_code_path: Optional[str]
 
     # Artifacts from parallel nodes
     code_content: Optional[str]
