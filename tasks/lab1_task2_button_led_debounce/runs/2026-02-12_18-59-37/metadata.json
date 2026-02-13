@@ -1,0 +1,12 @@
+{
+  "task_name": "lab1_task2_button_led_debounce",
+  "prompt_file": "prompt_mention-debounce.txt",
+  "project_name": "esp32s3_doorbell_interrupt",
+  "active_skills": [
+    "esp32-s3",
+    "esp-idf"
+  ],
+  "output_type": "esp-idf",
+  "timestamp": "2026-02-12T18:59:53.015154",
+  "requirements": "Can you help me using esp-idf to implements the following requirements using the esp32s3.\n\n\nBuild the circuit and write a robust program that emulates a doorbell. When the button is pushed, the buzzer will go off; when the button is let go, the buzzer will return to silent mode. The timing diagram is given below. The expectation is that this operation is done using an interrupt triggered by, or tied to, a GPIO pin. The button and buzzer must be connected to separate GPIO pins, and the buzzer operation will be triggered by its own connected GPIO pin.\n\nDemonstrate an operating doorbell system via an interrupt based on button press and debouncing. An interrupt should be triggered at most once when the button is pushed and once when the button is let go.\n\nThe LED is connected to the GPIO 13. The button is connected to GPIO 21."
+}
