@@ -1,0 +1,12 @@
+{
+  "task_name": "lab1_task3_variable-freq-led-w-buzzer",
+  "prompt_file": "prompt.txt",
+  "project_name": "esp32s3_button_led_buzzer_control",
+  "active_skills": [
+    "esp32-s3",
+    "esp-idf"
+  ],
+  "output_type": "esp-idf",
+  "timestamp": "2026-02-12T20:09:02.482118",
+  "requirements": "Can you help me using esp-idf to implements the following requirements using the esp32s3.\n\nBuild the circuit that integrates the button press with both the buzzer and the timer-based LED control. After the system reset, when you press the button:\n\nFor the 1st time, a timer is triggered that toggles the external LED at 1 Hz;\n\nFor the 2nd time, a timer is triggered that toggles the external LED at 2 Hz;\n\nFor the 3rd time, a timer is triggered that toggles the external LED at 4 Hz;\n\nFor the 4th time, the timer is stopped and the external LED will not blink;\n\nThe process repeats and the toggling frequency of the LED will undergo the sequence of 1 Hz, 2 Hz, 4 Hz, N/A, 1 Hz, 2 Hz, 4 Hz, N/A, \u2026 as you press the button. In addition, every time the button is pressed, the buzzer will go off, indicating that the button has been pressed. The timing diagram is given below. The button and buzzer must be connected to separate GPIO pins, and the buzzer operation will be triggered by its own connected GPIO pin.\n\n\n\nThe buzzer is connected to the GPIO 13. \nThe button is connected to GPIO 21 and already pull-down by external resistor.\nThe led is connected to the GPIO 9."
+}
