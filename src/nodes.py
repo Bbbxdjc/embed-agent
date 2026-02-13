@@ -6,9 +6,11 @@ Nodes:
 - prepare_workspace_node: Prepares output directories before code generation
 - coder_node: Generates the main code file
 - diagram_node: Placeholder for future diagram generation
-- assembler_node: Writes output files to disk
+- assemble_artifacts_node: Converts generated outputs into artifact list
+- persist_node: Persists artifacts and run metadata to disk
 """
 
+import hashlib
 import json
 import os
 import re
@@ -24,7 +26,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from src.loader import SkillRegistry
-from src.state import AgentState
+from src.state import AgentState, Artifact, WorkspaceInfo
 
 registry = SkillRegistry()
 MODEL_NAME = "anthropic/claude-4.5-sonnet"
@@ -246,10 +248,17 @@ def prepare_workspace_node(state: AgentState) -> dict:
         code_path = main_dir / "main.c"
         active_platform = "esp-idf"
 
+    workspace: WorkspaceInfo = {
+        "output_root": str(output_dir),
+        "target": active_platform,
+        "project_name": project_name,
+    }
+
     return {
         "prepared_output_dir": str(output_dir),
         "prepared_code_path": str(code_path),
         "active_platform": active_platform,
+        "workspace": workspace,
     }
 
 
@@ -315,67 +324,147 @@ def diagram_node(state: AgentState) -> dict:  # noqa: ARG001  # pylint: disable=
     return {"diagram_content": ""}
 
 
-def assembler_node(state: AgentState) -> dict:
-    """
-    Write the generated code and debug info to disk.
+def _get_workspace(state: AgentState) -> WorkspaceInfo:
+    """Return normalized workspace info from state with compatibility fallbacks."""
+    workspace = state.get("workspace", {})
+    output_root = workspace.get("output_root") or state.get("prepared_output_dir")
+    target = workspace.get("target") or state.get("active_platform")
+    project_name = workspace.get("project_name") or state.get("project_name", "output_project")
 
-    For Arduino: Creates output/{project_name}.ino
-    For ESP-IDF: Creates output/main/main.c with CMakeLists.txt
+    if not output_root:
+        run_dir = state.get("run_dir", "./output")
+        output_root = str(Path(run_dir) / "output")
 
-    Also writes:
-    - debug.json: All LLM call logs
-    - metadata.json: Run summary
+    if target not in {"arduino", "esp-idf"}:
+        active_skills = state.get("active_skills", [])
+        target = "arduino" if "arduino" in active_skills else "esp-idf"
+
+    return {
+        "output_root": str(output_root),
+        "target": target,
+        "project_name": project_name,
+    }
+
+
+def assemble_artifacts_node(state: AgentState) -> dict:
     """
-    project_name = state.get("project_name", "output_project")
+    Convert generated outputs into file artifacts without touching disk.
+    """
+    workspace = _get_workspace(state)
     raw_code = state.get("code_content", "")
-    active_skills = state.get("active_skills", [])
-    active_platform = state.get("active_platform")
-    run_dir = state.get("run_dir", "./output")
-    task_name = state.get("task_name", "unknown")
-    debug_logs = state.get("debug_logs", [])
-    prepared_output_dir = state.get("prepared_output_dir")
-    prepared_code_path = state.get("prepared_code_path")
-
     clean_code = extract_clean_code(raw_code)
+    diagram_content = (state.get("diagram_content") or "").strip()
 
+    artifacts: List[Artifact] = []
+    project_name = workspace["project_name"]
+    target = workspace["target"]
+
+    if target == "arduino":
+        code_rel_path = f"{project_name}.ino"
+    else:
+        code_rel_path = "main/main.c"
+
+    artifacts.append({
+        "path": code_rel_path,
+        "content": clean_code,
+        "role": "code",
+    })
+
+    if target == "esp-idf":
+        artifacts.append({
+            "path": "CMakeLists.txt",
+            "content": (
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "include($ENV{IDF_PATH}/tools/cmake/project.cmake)\n"
+                f"project({project_name})"
+            ),
+            "role": "meta",
+        })
+        artifacts.append({
+            "path": "main/CMakeLists.txt",
+            "content": 'idf_component_register(SRCS "main.c" INCLUDE_DIRS ".")',
+            "role": "meta",
+        })
+
+    if diagram_content:
+        artifacts.append({
+            "path": "wiring/wokwi.json",
+            "content": diagram_content,
+            "role": "diagram",
+        })
+
+    return {
+        "workspace": workspace,
+        "artifacts": artifacts,
+    }
+
+
+def _validate_artifact_path(output_root: Path, rel_path: str) -> Path:
+    """Validate artifact relative path and return resolved absolute path."""
+    relative = Path(rel_path)
+    if relative.is_absolute():
+        raise ValueError(f"Artifact path must be relative: {rel_path}")
+    if not rel_path.strip():
+        raise ValueError("Artifact path must not be empty.")
+    if ".." in relative.parts:
+        raise ValueError(f"Artifact path must not contain '..': {rel_path}")
+
+    root_resolved = output_root.resolve()
+    final_path = (output_root / relative).resolve()
+    final_path.relative_to(root_resolved)
+    return final_path
+
+
+def persist_node(state: AgentState) -> dict:
+    """Persist artifacts and run-level metadata to disk."""
+    workspace = _get_workspace(state)
+    run_dir = state.get("run_dir", "./output")
     run_path = Path(run_dir)
-    output_dir = Path(prepared_output_dir) if prepared_output_dir else run_path / "output"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_root = Path(workspace["output_root"])
+    output_root.mkdir(parents=True, exist_ok=True)
 
-    # Write code files
-    if prepared_code_path:
-        code_path = Path(prepared_code_path)
-    elif "arduino" in active_skills:
-        code_path = output_dir / f"{project_name}.ino"
-    else:
-        main_dir = output_dir / "main"
-        main_dir.mkdir(parents=True, exist_ok=True)
-        code_path = main_dir / "main.c"
+    artifacts = state.get("artifacts", [])
+    persisted_paths: List[str] = []
+    manifest_artifacts: List[dict] = []
 
-    code_path.parent.mkdir(parents=True, exist_ok=True)
-    code_path.write_text(clean_code)
+    for artifact in artifacts:
+        rel_path = artifact.get("path", "")
+        content = artifact.get("content", "")
+        role = artifact.get("role", "unknown")
 
-    if active_platform == "arduino" or code_path.suffix == ".ino":
-        output_type = "arduino"
-    else:
-        main_dir = code_path.parent
-        (output_dir / "CMakeLists.txt").write_text(
-            f"cmake_minimum_required(VERSION 3.16)\n"
-            f"include($ENV{{IDF_PATH}}/tools/cmake/project.cmake)\n"
-            f"project({project_name})"
-        )
-        (main_dir / "CMakeLists.txt").write_text(
-            'idf_component_register(SRCS "main.c" INCLUDE_DIRS ".")'
-        )
-        output_type = "esp-idf"
+        final_path = _validate_artifact_path(output_root, rel_path)
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        final_path.write_text(content, encoding="utf-8")
 
-    # Write debug.json
+        payload = content.encode("utf-8")
+        manifest_artifacts.append({
+            "path": rel_path,
+            "role": role,
+            "bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+        })
+        persisted_paths.append(str(final_path))
+
+    active_skills = state.get("active_skills", [])
+    project_name = workspace["project_name"]
+    output_type = workspace["target"]
+
+    manifest = {
+        "project_name": project_name,
+        "target": workspace["target"],
+        "active_skills": active_skills,
+        "timestamp": datetime.now().isoformat(),
+        "artifacts": manifest_artifacts,
+    }
+    manifest_path = output_root / "manifest.lock.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    debug_logs = state.get("debug_logs", [])
     debug_path = run_path / "debug.json"
-    debug_path.write_text(json.dumps(debug_logs, indent=2))
+    debug_path.write_text(json.dumps(debug_logs, indent=2), encoding="utf-8")
 
-    # Write metadata.json
     metadata = {
-        "task_name": task_name,
+        "task_name": state.get("task_name", "unknown"),
         "prompt_file": state.get("prompt_file", "unknown"),
         "project_name": project_name,
         "active_skills": active_skills,
@@ -384,6 +473,10 @@ def assembler_node(state: AgentState) -> dict:
         "requirements": state.get("requirements", ""),
     }
     metadata_path = run_path / "metadata.json"
-    metadata_path.write_text(json.dumps(metadata, indent=2))
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
-    return {"status_msg": f"Project generated at {run_path}"}
+    return {
+        "manifest_path": str(manifest_path),
+        "persisted_paths": persisted_paths,
+        "status_msg": f"Project generated at {run_path}",
+    }

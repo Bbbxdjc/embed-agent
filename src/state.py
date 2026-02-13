@@ -3,6 +3,22 @@ from langchain_core.messages import BaseMessage
 import operator
 
 
+class WorkspaceInfo(TypedDict, total=False):
+    """Structured workspace information prepared before generation."""
+
+    output_root: str
+    target: str
+    project_name: str
+
+
+class Artifact(TypedDict, total=False):
+    """Generated artifact payload (not persisted yet)."""
+
+    path: str
+    content: str
+    role: str
+
+
 class AgentState(TypedDict, total=False):
     """State schema for the embedded code generation agent."""
 
@@ -21,10 +37,12 @@ class AgentState(TypedDict, total=False):
     active_skill_content: Optional[str]
     prepared_output_dir: Optional[str]
     prepared_code_path: Optional[str]
+    workspace: WorkspaceInfo
 
-    # Artifacts from parallel nodes
+    # Artifacts from generation/assembly
     code_content: Optional[str]
     diagram_content: Optional[str]
+    artifacts: List[Artifact]
 
     # Message history for multi-turn interactions
     messages: Annotated[List[BaseMessage], operator.add]
@@ -33,4 +51,6 @@ class AgentState(TypedDict, total=False):
     debug_logs: Annotated[List[dict], operator.add]
 
     # Final output
+    manifest_path: Optional[str]
+    persisted_paths: List[str]
     status_msg: str

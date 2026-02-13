@@ -179,7 +179,7 @@ def main():
                 print(f"  Project: {output.get('project_name')}")
                 print(f"  Skills: {output.get('active_skills')}")
 
-            elif node_name == "assembler":
+            elif node_name == "persist":
                 print(f"  {output.get('status_msg')}")
 
     print(f"\nDebug logs saved to: {run_dir}/debug.json")

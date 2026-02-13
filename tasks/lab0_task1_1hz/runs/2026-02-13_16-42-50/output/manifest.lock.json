@@ -1,0 +1,29 @@
+{
+  "project_name": "esp32s3_led_toggle_demo",
+  "target": "esp-idf",
+  "active_skills": [
+    "esp32-s3",
+    "esp-idf"
+  ],
+  "timestamp": "2026-02-13T16:43:00.994683",
+  "artifacts": [
+    {
+      "path": "main/main.c",
+      "role": "code",
+      "bytes": 1431,
+      "sha256": "fd748bf1576e2e730cf7754281a8bb594def5e456d8dbed9d58bbf38ba6fe71f"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "role": "meta",
+      "bytes": 119,
+      "sha256": "0d973b234b8bd8ff46397541e79d59adfa2bad5fce83ef33b01d634d2a7b9ca2"
+    },
+    {
+      "path": "main/CMakeLists.txt",
+      "role": "meta",
+      "bytes": 54,
+      "sha256": "be210039511b6264e785366c263f3787500668249f46ef05ff2d7cf9c9158ca6"
+    }
+  ]
+}
